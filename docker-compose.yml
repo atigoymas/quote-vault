@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: quotevault
+      POSTGRES_PASSWORD: quotevault
+      POSTGRES_DB: quotevault
+    ports:
+      - "5432:5432"
+    volumes:
+      - quote_vault_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quotevault -d quotevault"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  quote_vault_data:
