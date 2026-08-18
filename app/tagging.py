@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Callable
+from typing import TypeVar
 
 from google import genai
 from google.genai import types
@@ -15,39 +17,34 @@ MODEL_NAME = "gemini-3.5-flash-lite"
 MAX_ATTEMPTS = 3
 BASE_DELAY_SECONDS = 1.0
 
-_PROMPT = """Read the following quote and return 3 to 5 short mood/theme tags \
+_TAG_PROMPT = """Read the following quote and return 3 to 5 short mood/theme tags \
 that capture how it feels and what it is about. Use lowercase single words or \
 short phrases.
 
 Quote: {text}"""
+
+_EXPLANATION_PROMPT = """A person described how they're feeling: {feeling}
+
+This quote was matched to that feeling:
+"{quote}"
+
+In one sentence, explain why this quote resonates with that feeling."""
 
 
 def _client(api_key: str) -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
-def _generate_tags_sync(text: str, api_key: str) -> list[str]:
-    client = _client(api_key)
+T = TypeVar("T")
+
+
+def _with_retry(operation: Callable[[], T], *, context: str) -> T | None:
     delay = BASE_DELAY_SECONDS
     last_error: Exception | None = None
 
     for attempt in range(MAX_ATTEMPTS):
         try:
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=_PROMPT.format(text=text),
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=list[str],
-                ),
-            )
-            tags = json.loads(response.text)
-            if not isinstance(tags, list) or not all(isinstance(t, str) for t in tags):
-                raise ValueError(f"expected a list of strings, got {tags!r}")
-            cleaned = [t.strip().lower() for t in tags if t.strip()]
-            if not cleaned:
-                raise ValueError("model returned no usable tags")
-            return cleaned[:5]
+            return operation()
         except APIError as exc:
             last_error = exc
             if exc.code != 429 or attempt == MAX_ATTEMPTS - 1:
@@ -58,8 +55,47 @@ def _generate_tags_sync(text: str, api_key: str) -> list[str]:
             last_error = exc
             break
 
-    logger.warning("auto-tagging failed, saving quote without tags: %s", last_error)
-    return []
+    logger.warning("%s failed: %s", context, last_error)
+    return None
+
+
+def _generate_tags_sync(text: str, api_key: str) -> list[str]:
+    client = _client(api_key)
+
+    def _call() -> list[str]:
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=_TAG_PROMPT.format(text=text),
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=list[str],
+            ),
+        )
+        tags = json.loads(response.text)
+        if not isinstance(tags, list) or not all(isinstance(t, str) for t in tags):
+            raise ValueError(f"expected a list of strings, got {tags!r}")
+        cleaned = [t.strip().lower() for t in tags if t.strip()]
+        if not cleaned:
+            raise ValueError("model returned no usable tags")
+        return cleaned[:5]
+
+    return _with_retry(_call, context="auto-tagging") or []
+
+
+def _generate_explanation_sync(feeling: str, quote_text: str, api_key: str) -> str | None:
+    client = _client(api_key)
+
+    def _call() -> str:
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=_EXPLANATION_PROMPT.format(feeling=feeling, quote=quote_text),
+        )
+        explanation = (response.text or "").strip()
+        if not explanation:
+            raise ValueError("model returned an empty explanation")
+        return explanation
+
+    return _with_retry(_call, context="mood explanation")
 
 
 async def generate_tags(text: str) -> list[str]:
@@ -67,3 +103,12 @@ async def generate_tags(text: str) -> list[str]:
     if not settings.gemini_api_key:
         return []
     return await asyncio.to_thread(_generate_tags_sync, text, settings.gemini_api_key)
+
+
+async def generate_explanation(feeling: str, quote_text: str) -> str | None:
+    settings = get_settings()
+    if not settings.gemini_api_key:
+        return None
+    return await asyncio.to_thread(
+        _generate_explanation_sync, feeling, quote_text, settings.gemini_api_key
+    )

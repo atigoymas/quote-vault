@@ -23,3 +23,27 @@ class QuoteOut(BaseModel):
 class TagCount(BaseModel):
     tag: str
     count: int
+
+
+class TopicSearchRequest(BaseModel):
+    query: str
+    tag: str | None = None
+    limit: int = 5
+
+
+class SearchResult(BaseModel):
+    id: int
+    text: str
+    source: str | None
+    author: str | None
+    tags: list[str] | None
+    similarity: float
+
+
+class MoodSearchRequest(BaseModel):
+    feeling: str
+    tag: str | None = None
+
+
+class MoodSearchResult(SearchResult):
+    explanation: str | None

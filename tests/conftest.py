@@ -28,3 +28,11 @@ def _stub_auto_tagging(monkeypatch: pytest.MonkeyPatch) -> None:
         return []
 
     monkeypatch.setattr("app.routers.quotes.generate_tags", _no_tags)
+
+
+@pytest.fixture(autouse=True)
+def _stub_mood_explanation(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _no_explanation(feeling: str, quote_text: str) -> str | None:
+        return None
+
+    monkeypatch.setattr("app.routers.search.generate_explanation", _no_explanation)
