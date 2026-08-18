@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { QuoteDisplay } from '../components/QuoteDisplay'
-import { ApiError, listTags, searchMood } from '../lib/api'
+import { ApiError, searchMood } from '../lib/api'
 import { getRecentlyViewed, recordView, type ViewedQuote } from '../lib/recentlyViewed'
-import type { MoodSearchResult, TagCount } from '../types'
+import type { MoodSearchResult } from '../types'
 
 const SUGGESTIONS = ['overwhelmed', 'hopeful', 'restless', 'grateful']
 
@@ -14,20 +14,12 @@ interface MoodSearchProps {
 
 export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
   const [feeling, setFeeling] = useState('')
-  const [tags, setTags] = useState<TagCount[]>([])
-  const [activeTag, setActiveTag] = useState<string | null>(null)
   const [result, setResult] = useState<MoodSearchResult | null>(null)
   const [offlineQuote, setOfflineQuote] = useState<ViewedQuote | null>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
-  useEffect(() => {
-    listTags()
-      .then(setTags)
-      .catch(() => setTags([]))
-  }, [])
-
-  async function runSearch(value: string, tag: string | null) {
+  async function runSearch(value: string) {
     const trimmed = value.trim()
     if (!trimmed) return
 
@@ -40,7 +32,7 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
 
     setStatus('loading')
     try {
-      const match = await searchMood(trimmed, tag ?? undefined)
+      const match = await searchMood(trimmed)
       recordView(match)
       setResult(match)
       setStatus('result')
@@ -56,18 +48,12 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    void runSearch(feeling, activeTag)
+    void runSearch(feeling)
   }
 
   function handleSuggestion(word: string) {
     setFeeling(word)
-    void runSearch(word, activeTag)
-  }
-
-  function toggleTag(tag: string) {
-    const next = activeTag === tag ? null : tag
-    setActiveTag(next)
-    if (feeling.trim()) void runSearch(feeling, next)
+    void runSearch(word)
   }
 
   return (
@@ -85,23 +71,6 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
           className="mt-3 w-full rounded-full border border-line bg-white px-6 py-4 text-center font-serif text-lg text-ink shadow-sm outline-none focus:border-accent"
         />
       </form>
-
-      {tags.length > 0 && (
-        <div className="mx-auto mt-4 flex max-w-md flex-wrap justify-center gap-x-3 gap-y-1">
-          {tags.slice(0, 8).map(({ tag }) => (
-            <button
-              key={tag}
-              onClick={() => toggleTag(tag)}
-              type="button"
-              className={`text-xs tracking-wide uppercase ${
-                activeTag === tag ? 'text-accent' : 'text-muted'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="mt-12 flex flex-1 flex-col items-center justify-center">
         {status === 'idle' && (
