@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { QuoteDisplay } from '../components/QuoteDisplay'
 import { ApiError, listTags, searchMood } from '../lib/api'
+import { getRecentlyViewed, recordView, type ViewedQuote } from '../lib/recentlyViewed'
 import type { MoodSearchResult, TagCount } from '../types'
 
 const SUGGESTIONS = ['overwhelmed', 'hopeful', 'restless', 'grateful']
 
-type Status = 'idle' | 'loading' | 'result' | 'empty' | 'error'
+type Status = 'idle' | 'loading' | 'result' | 'empty' | 'error' | 'offline'
 
 interface MoodSearchProps {
   onNavigateToCapture: () => void
@@ -16,6 +17,7 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
   const [tags, setTags] = useState<TagCount[]>([])
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [result, setResult] = useState<MoodSearchResult | null>(null)
+  const [offlineQuote, setOfflineQuote] = useState<ViewedQuote | null>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -28,9 +30,18 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
   async function runSearch(value: string, tag: string | null) {
     const trimmed = value.trim()
     if (!trimmed) return
+
+    if (!navigator.onLine) {
+      const recent = getRecentlyViewed()
+      setOfflineQuote(recent[0] ?? null)
+      setStatus('offline')
+      return
+    }
+
     setStatus('loading')
     try {
       const match = await searchMood(trimmed, tag ?? undefined)
+      recordView(match)
       setResult(match)
       setStatus('result')
     } catch (error) {
@@ -127,6 +138,29 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
         )}
 
         {status === 'error' && <p className="text-sm text-muted">{errorMessage}</p>}
+
+        {status === 'offline' && (
+          <div className="text-center">
+            <p className="text-sm text-muted">
+              You're offline — mood search needs a connection.
+            </p>
+            {offlineQuote ? (
+              <div className="mt-6">
+                <QuoteDisplay
+                  text={offlineQuote.text}
+                  author={offlineQuote.author}
+                  source={offlineQuote.source}
+                  tags={offlineQuote.tags}
+                />
+                <p className="mt-4 text-xs text-muted">from your recently viewed quotes</p>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-muted">
+                Nothing cached yet for offline reading — view a few quotes while online first.
+              </p>
+            )}
+          </div>
+        )}
 
         {status === 'result' && result && (
           <div>

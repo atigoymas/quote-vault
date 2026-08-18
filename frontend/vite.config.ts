@@ -28,6 +28,33 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
+        share_target: {
+          action: '/share-target',
+          method: 'GET',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+          },
+        },
+      },
+      workbox: {
+        navigateFallback: '/index.html',
+        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) =>
+              request.method === 'GET' &&
+              (url.pathname === '/tags' || url.pathname.startsWith('/quotes')),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-reads',
+              networkTimeoutSeconds: 4,
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
+            },
+          },
+        ],
       },
     }),
   ],

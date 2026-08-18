@@ -1,17 +1,34 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError, createQuote } from '../lib/api'
+import { recordView } from '../lib/recentlyViewed'
 import type { Quote } from '../types'
 
 type Status = 'idle' | 'saving' | 'saved' | 'error'
 
-export function QuickCapture() {
-  const [text, setText] = useState('')
-  const [showDetails, setShowDetails] = useState(false)
+export interface SharedDraft {
+  text: string
+  source: string
+}
+
+interface QuickCaptureProps {
+  initialDraft?: SharedDraft | null
+  onDraftConsumed?: () => void
+}
+
+export function QuickCapture({ initialDraft, onDraftConsumed }: QuickCaptureProps) {
+  const [text, setText] = useState(initialDraft?.text ?? '')
+  const [showDetails, setShowDetails] = useState(Boolean(initialDraft?.source))
   const [author, setAuthor] = useState('')
-  const [source, setSource] = useState('')
+  const [source, setSource] = useState(initialDraft?.source ?? '')
   const [status, setStatus] = useState<Status>('idle')
   const [saved, setSaved] = useState<Quote | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    if (initialDraft) onDraftConsumed?.()
+    // consume the shared draft once, on mount — later re-mounts shouldn't reapply it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -24,6 +41,7 @@ export function QuickCapture() {
         author: author.trim() || undefined,
         source: source.trim() || undefined,
       })
+      recordView(quote)
       setSaved(quote)
       setStatus('saved')
     } catch (error) {

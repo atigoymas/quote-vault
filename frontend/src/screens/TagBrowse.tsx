@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { QuoteDisplay } from '../components/QuoteDisplay'
 import { listQuotes, listTags } from '../lib/api'
+import { recordView } from '../lib/recentlyViewed'
 import type { Quote, TagCount } from '../types'
 
 export function TagBrowse() {
@@ -17,7 +18,10 @@ export function TagBrowse() {
 
   useEffect(() => {
     if (!selected) return
-    listQuotes(selected).then(setQuotes)
+    listQuotes(selected).then((fetched) => {
+      setQuotes(fetched)
+      fetched.forEach(recordView)
+    })
   }, [selected])
 
   const maxCount = Math.max(1, ...tags.map((t) => t.count))
