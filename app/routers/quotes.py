@@ -1,7 +1,10 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
 from app.database import DbSession
+from app.embeddings import embed_text
 from app.models import Quote
 from app.schemas import QuoteCreate, QuoteOut
 
@@ -10,7 +13,13 @@ router = APIRouter(tags=["quotes"])
 
 @router.post("/quotes", response_model=QuoteOut, status_code=201)
 async def create_quote(payload: QuoteCreate, db: DbSession) -> Quote:
-    quote = Quote(text=payload.text, source=payload.source, author=payload.author)
+    embedding = await asyncio.to_thread(embed_text, payload.text)
+    quote = Quote(
+        text=payload.text,
+        source=payload.source,
+        author=payload.author,
+        embedding=embedding,
+    )
     db.add(quote)
     await db.commit()
     await db.refresh(quote)
