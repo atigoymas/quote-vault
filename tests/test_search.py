@@ -26,7 +26,7 @@ async def test_search_topic_filters_by_tag(
 ) -> None:
     tags_by_text = {MORTALITY_A: ["philosophy"], MORTALITY_B: ["untagged"]}
 
-    async def _fake_generate_tags(text: str) -> list[str]:
+    async def _fake_generate_tags(text: str, existing_tags: list[str] | None = None) -> list[str]:
         return tags_by_text[text]
 
     monkeypatch.setattr("app.routers.quotes.generate_tags", _fake_generate_tags)
@@ -86,7 +86,7 @@ async def test_search_mood_filters_by_tag(
 ) -> None:
     tags_by_text = {MORTALITY_A: ["untagged"], UNRELATED: ["cooking"]}
 
-    async def _fake_generate_tags(text: str) -> list[str]:
+    async def _fake_generate_tags(text: str, existing_tags: list[str] | None = None) -> list[str]:
         return tags_by_text[text]
 
     monkeypatch.setattr("app.routers.quotes.generate_tags", _fake_generate_tags)

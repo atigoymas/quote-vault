@@ -24,7 +24,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture(autouse=True)
 def _stub_auto_tagging(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def _no_tags(text: str) -> list[str]:
+    async def _no_tags(text: str, existing_tags: list[str] | None = None) -> list[str]:
         return []
 
     monkeypatch.setattr("app.routers.quotes.generate_tags", _no_tags)

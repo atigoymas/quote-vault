@@ -31,6 +31,24 @@ def test_generate_tags_sync_parses_valid_json(monkeypatch: pytest.MonkeyPatch) -
     assert tags == ["longing", "solitude", "resolve"]
 
 
+def test_generate_tags_sync_prompts_with_existing_tags(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, str] = {}
+
+    def generate_content(*, model: str, contents: str, config: object) -> _FakeResponse:
+        captured["contents"] = contents
+        return _FakeResponse(json.dumps(["hope"]))
+
+    fake_client = SimpleNamespace(models=SimpleNamespace(generate_content=generate_content))
+    monkeypatch.setattr(tagging, "_client", lambda api_key: fake_client)
+
+    tagging._generate_tags_sync(
+        "some quote", api_key="fake-key", existing_tags=["resilience", "hope"]
+    )
+
+    assert "resilience" in captured["contents"]
+    assert "hope" in captured["contents"]
+
+
 def test_generate_tags_sync_handles_malformed_json(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tagging, "_client", lambda api_key: _fake_client("not json"))
 
@@ -95,7 +113,7 @@ async def test_generate_tags_skips_without_api_key(monkeypatch: pytest.MonkeyPat
 async def test_create_quote_saves_with_generated_tags(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def _fake_generate_tags(text: str) -> list[str]:
+    async def _fake_generate_tags(text: str, existing_tags: list[str] | None = None) -> list[str]:
         return ["hope", "resolve"]
 
     monkeypatch.setattr("app.routers.quotes.generate_tags", _fake_generate_tags)
@@ -109,7 +127,9 @@ async def test_create_quote_saves_with_generated_tags(
 async def test_create_quote_saves_when_tagging_fails(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def _failing_generate_tags(text: str) -> list[str]:
+    async def _failing_generate_tags(
+        text: str, existing_tags: list[str] | None = None
+    ) -> list[str]:
         return []
 
     monkeypatch.setattr("app.routers.quotes.generate_tags", _failing_generate_tags)

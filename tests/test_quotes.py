@@ -39,7 +39,7 @@ async def test_list_quotes_filtered_by_tag(
         "Quote about grief": ["grief", "loss"],
     }
 
-    async def _fake_generate_tags(text: str) -> list[str]:
+    async def _fake_generate_tags(text: str, existing_tags: list[str] | None = None) -> list[str]:
         return tags_by_text[text]
 
     monkeypatch.setattr("app.routers.quotes.generate_tags", _fake_generate_tags)
@@ -63,7 +63,7 @@ async def test_list_tags_returns_counts(
         "Quote three": ["grief"],
     }
 
-    async def _fake_generate_tags(text: str) -> list[str]:
+    async def _fake_generate_tags(text: str, existing_tags: list[str] | None = None) -> list[str]:
         return tags_by_text[text]
 
     monkeypatch.setattr("app.routers.quotes.generate_tags", _fake_generate_tags)

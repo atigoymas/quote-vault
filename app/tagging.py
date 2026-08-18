@@ -21,6 +21,16 @@ _TAG_PROMPT = """Read the following quote and return 3 to 5 short mood/theme tag
 that capture how it feels and what it is about. Use lowercase single words or \
 short phrases.
 
+Start from what this specific quote is actually about — do not just pick \
+generic or already-popular tags. Then, for each tag you land on, check the \
+existing tags below: if one of them names the exact same specific feeling \
+or theme (a true synonym, not just a related or broader category), reuse \
+that exact existing tag instead of adding a near-duplicate. Otherwise keep \
+your own tag. Precision for this quote always wins over reusing an existing \
+tag — most quotes will still need at least one tag that isn't in this list.
+
+Existing tags: {existing_tags}
+
 Quote: {text}"""
 
 _EXPLANATION_PROMPT = """A person described how they're feeling: {feeling}
@@ -59,13 +69,16 @@ def _with_retry(operation: Callable[[], T], *, context: str) -> T | None:
     return None
 
 
-def _generate_tags_sync(text: str, api_key: str) -> list[str]:
+def _generate_tags_sync(
+    text: str, api_key: str, existing_tags: list[str] | None = None
+) -> list[str]:
     client = _client(api_key)
+    existing_display = ", ".join(sorted(existing_tags)) if existing_tags else "(none yet)"
 
     def _call() -> list[str]:
         response = client.models.generate_content(
             model=MODEL_NAME,
-            contents=_TAG_PROMPT.format(text=text),
+            contents=_TAG_PROMPT.format(text=text, existing_tags=existing_display),
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=list[str],
@@ -98,11 +111,13 @@ def _generate_explanation_sync(feeling: str, quote_text: str, api_key: str) -> s
     return _with_retry(_call, context="mood explanation")
 
 
-async def generate_tags(text: str) -> list[str]:
+async def generate_tags(text: str, existing_tags: list[str] | None = None) -> list[str]:
     settings = get_settings()
     if not settings.gemini_api_key:
         return []
-    return await asyncio.to_thread(_generate_tags_sync, text, settings.gemini_api_key)
+    return await asyncio.to_thread(
+        _generate_tags_sync, text, settings.gemini_api_key, existing_tags
+    )
 
 
 async def generate_explanation(feeling: str, quote_text: str) -> str | None:

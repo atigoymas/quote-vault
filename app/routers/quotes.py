@@ -3,6 +3,7 @@ import asyncio
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 from sqlalchemy import text as sql_text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import DbSession
 from app.embeddings import embed_text
@@ -13,10 +14,18 @@ from app.tagging import generate_tags
 router = APIRouter(tags=["quotes"])
 
 
+async def _distinct_tags(db: AsyncSession) -> list[str]:
+    result = await db.execute(
+        sql_text("SELECT DISTINCT tag FROM quotes, LATERAL unnest(tags) AS tag")
+    )
+    return [row.tag for row in result]
+
+
 @router.post("/quotes", response_model=QuoteOut, status_code=201)
 async def create_quote(payload: QuoteCreate, db: DbSession) -> Quote:
     embedding = await asyncio.to_thread(embed_text, payload.text)
-    tags = await generate_tags(payload.text)
+    existing_tags = await _distinct_tags(db)
+    tags = await generate_tags(payload.text, existing_tags)
     quote = Quote(
         text=payload.text,
         source=payload.source,
