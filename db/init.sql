@@ -10,4 +10,6 @@ CREATE TABLE quotes (
     created_at  TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX ON quotes USING ivfflat (embedding vector_cosine_ops);
+-- No ANN index (ivfflat/hnsw) by design — see CLAUDE.md: at this scale,
+-- brute-force cosine over <=> is fast enough, and ivfflat built before rows
+-- exist produces degenerate clusters that make search miss real matches.
