@@ -18,3 +18,8 @@ class QuoteOut(BaseModel):
     author: str | None
     tags: list[str] | None
     created_at: datetime
+
+
+class TagCount(BaseModel):
+    tag: str
+    count: int

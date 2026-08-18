@@ -12,6 +12,7 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "sentence-transformers>=3.0",
+    "google-genai>=1.0",
 ]
 
 [project.optional-dependencies]

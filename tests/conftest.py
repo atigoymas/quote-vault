@@ -20,3 +20,11 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest.fixture(autouse=True)
+def _stub_auto_tagging(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _no_tags(text: str) -> list[str]:
+        return []
+
+    monkeypatch.setattr("app.routers.quotes.generate_tags", _no_tags)

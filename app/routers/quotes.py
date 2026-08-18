@@ -2,11 +2,13 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
+from sqlalchemy import text as sql_text
 
 from app.database import DbSession
 from app.embeddings import embed_text
 from app.models import Quote
-from app.schemas import QuoteCreate, QuoteOut
+from app.schemas import QuoteCreate, QuoteOut, TagCount
+from app.tagging import generate_tags
 
 router = APIRouter(tags=["quotes"])
 
@@ -14,11 +16,13 @@ router = APIRouter(tags=["quotes"])
 @router.post("/quotes", response_model=QuoteOut, status_code=201)
 async def create_quote(payload: QuoteCreate, db: DbSession) -> Quote:
     embedding = await asyncio.to_thread(embed_text, payload.text)
+    tags = await generate_tags(payload.text)
     quote = Quote(
         text=payload.text,
         source=payload.source,
         author=payload.author,
         embedding=embedding,
+        tags=tags or None,
     )
     db.add(quote)
     await db.commit()
@@ -46,3 +50,14 @@ async def get_quote(quote_id: int, db: DbSession) -> Quote:
     if quote is None:
         raise HTTPException(status_code=404, detail="Quote not found")
     return quote
+
+
+@router.get("/tags", response_model=list[TagCount])
+async def list_tags(db: DbSession) -> list[TagCount]:
+    result = await db.execute(
+        sql_text(
+            "SELECT tag, COUNT(*) AS count FROM quotes, LATERAL unnest(tags) AS tag "
+            "GROUP BY tag ORDER BY count DESC, tag ASC"
+        )
+    )
+    return [TagCount(tag=row.tag, count=row.count) for row in result]
