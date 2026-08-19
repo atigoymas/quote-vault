@@ -8,8 +8,10 @@ from app import tagging
 
 
 class _FakeResponse:
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, *, prompt_feedback=None, candidates=None) -> None:
         self.text = text
+        self.prompt_feedback = prompt_feedback
+        self.candidates = candidates
 
 
 def _fake_client(response_text: str) -> SimpleNamespace:
@@ -100,6 +102,57 @@ def test_generate_tags_sync_gives_up_on_non_rate_limit_error(
     tags = tagging._generate_tags_sync("some quote", api_key="fake-key")
 
     assert tags == []
+
+
+def test_generate_tags_sync_rejects_flagged_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    flagged = _FakeResponse(
+        "", prompt_feedback=SimpleNamespace(block_reason=tagging.types.BlockedReason.SAFETY)
+    )
+    monkeypatch.setattr(
+        tagging,
+        "_client",
+        lambda api_key: SimpleNamespace(
+            models=SimpleNamespace(generate_content=lambda **kwargs: flagged)
+        ),
+    )
+
+    with pytest.raises(tagging.ContentFlaggedError):
+        tagging._generate_tags_sync("some quote", api_key="fake-key")
+
+
+def test_generate_explanation_sync_returns_none_when_flagged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flagged = _FakeResponse(
+        "some text",
+        candidates=[SimpleNamespace(finish_reason=tagging.types.FinishReason.SAFETY)],
+    )
+    monkeypatch.setattr(
+        tagging,
+        "_client",
+        lambda api_key: SimpleNamespace(
+            models=SimpleNamespace(generate_content=lambda **kwargs: flagged)
+        ),
+    )
+
+    explanation = tagging._generate_explanation_sync("feeling", "quote text", api_key="fake-key")
+
+    assert explanation is None
+
+
+async def test_create_quote_rejects_flagged_content(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def _flagged_generate_tags(
+        text: str, existing_tags: list[str] | None = None
+    ) -> list[str]:
+        raise tagging.ContentFlaggedError("SAFETY")
+
+    monkeypatch.setattr("app.routers.quotes.generate_tags", _flagged_generate_tags)
+
+    response = await client.post("/quotes", json={"text": "Some quote"})
+
+    assert response.status_code == 400
 
 
 async def test_generate_tags_skips_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:

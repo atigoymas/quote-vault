@@ -1,6 +1,5 @@
 import secrets
 import time
-from collections import defaultdict
 
 from fastapi import HTTPException, Request
 
@@ -18,7 +17,16 @@ OWNER_HEADER = "x-owner-key"
 PUBLIC_WINDOW_SECONDS = 60 * 60 * 24
 PUBLIC_MAX_REQUESTS_PER_WINDOW = 3
 
-_hits: dict[str, list[float]] = defaultdict(list)
+_hits: dict[str, list[float]] = {}
+
+
+def _prune_expired(window_start: float) -> None:
+    # Runs every call so the dict never retains an IP past its own window —
+    # cheap at this app's scale (dozens to low hundreds of distinct daily
+    # visitors, not internet-scale traffic).
+    expired = [ip for ip, hits in _hits.items() if not hits or hits[-1] < window_start]
+    for ip in expired:
+        del _hits[ip]
 
 
 def _client_ip(request: Request) -> str:
@@ -53,12 +61,13 @@ def enforce_rate_limit(request: Request) -> None:
     if is_owner(request):
         return
 
-    client_ip = _client_ip(request)
     now = time.monotonic()
     window_start = now - PUBLIC_WINDOW_SECONDS
-    hits = _hits[client_ip]
-    while hits and hits[0] < window_start:
-        hits.pop(0)
+    _prune_expired(window_start)
+
+    client_ip = _client_ip(request)
+    hits = _hits.setdefault(client_ip, [])
+    hits[:] = [t for t in hits if t >= window_start]
     if len(hits) >= PUBLIC_MAX_REQUESTS_PER_WINDOW:
         raise HTTPException(status_code=429, detail="Too many requests — slow down a bit.")
     hits.append(now)

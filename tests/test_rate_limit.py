@@ -103,3 +103,13 @@ async def test_client_ip_falls_back_to_last_forwarded_for_hop() -> None:
     request = Request(scope)
 
     assert rate_limit._client_ip(request) == "2.2.2.2"
+
+
+def test_prune_expired_removes_stale_ips_but_keeps_fresh_ones() -> None:
+    rate_limit._hits["stale-ip"] = [0.0]
+    rate_limit._hits["fresh-ip"] = [1000.0]
+
+    rate_limit._prune_expired(window_start=500.0)
+
+    assert "stale-ip" not in rate_limit._hits
+    assert "fresh-ip" in rate_limit._hits

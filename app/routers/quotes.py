@@ -10,7 +10,7 @@ from app.embeddings import embed_text
 from app.models import Quote
 from app.rate_limit import require_owner
 from app.schemas import QuoteCreate, QuoteOut, TagCount
-from app.tagging import generate_tags
+from app.tagging import ContentFlaggedError, generate_tags
 
 router = APIRouter(tags=["quotes"])
 
@@ -31,7 +31,10 @@ async def _distinct_tags(db: AsyncSession) -> list[str]:
 async def create_quote(payload: QuoteCreate, db: DbSession) -> Quote:
     embedding = await asyncio.to_thread(embed_text, payload.text)
     existing_tags = await _distinct_tags(db)
-    tags = await generate_tags(payload.text, existing_tags)
+    try:
+        tags = await generate_tags(payload.text, existing_tags)
+    except ContentFlaggedError as exc:
+        raise HTTPException(status_code=400, detail="This content can't be saved.") from exc
     quote = Quote(
         text=payload.text,
         source=payload.source,
