@@ -15,6 +15,7 @@ interface MoodSearchProps {
 export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [feeling, setFeeling] = useState('')
+  const [isFocused, setIsFocused] = useState(false)
   const [result, setResult] = useState<MoodSearchResult | null>(null)
   const [offlineQuote, setOfflineQuote] = useState<ViewedQuote | null>(null)
   const [status, setStatus] = useState<Status>('idle')
@@ -69,13 +70,16 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
           ref={inputRef}
           value={feeling}
           onChange={(event) => setFeeling(event.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           placeholder="restless, hopeful, undone…"
-          autoFocus
           className="mt-3 w-full rounded-full border border-line bg-white px-6 py-4 text-center font-serif text-lg text-ink shadow-sm outline-none focus:border-accent"
         />
       </form>
 
-      <div className="mt-12 flex flex-1 flex-col items-center justify-center">
+      <div
+        className={`mt-12 flex flex-1 flex-col items-center justify-center ${isFocused ? 'invisible' : ''}`}
+      >
         {status === 'idle' && (
           <div className="text-center">
             <p className="text-sm text-muted">or try</p>
