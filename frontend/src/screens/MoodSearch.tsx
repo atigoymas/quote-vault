@@ -6,6 +6,41 @@ import type { MoodSearchResult } from '../types'
 
 const SUGGESTIONS = ['overwhelmed', 'hopeful', 'restless', 'grateful']
 
+const RANDOM_FEELINGS = [
+  'overwhelmed',
+  'hopeful',
+  'restless',
+  'grateful',
+  'anxious',
+  'motivated',
+  'lonely',
+  'inspired',
+  'nostalgic',
+  'uncertain',
+  'proud',
+  'exhausted',
+  'curious',
+  'content',
+  'frustrated',
+  'adventurous',
+  'calm',
+  'stuck',
+  'excited',
+  'melancholy',
+  'determined',
+  'vulnerable',
+  'joyful',
+  'conflicted',
+  'peaceful',
+  'homesick',
+  'empowered',
+  'reflective',
+]
+
+function pickRandomFeeling(): string {
+  return RANDOM_FEELINGS[Math.floor(Math.random() * RANDOM_FEELINGS.length)]
+}
+
 type Status = 'idle' | 'loading' | 'result' | 'empty' | 'error' | 'offline'
 
 interface MoodSearchProps {
@@ -59,6 +94,12 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
     void runSearch(word)
   }
 
+  function handleSurpriseMe() {
+    const word = pickRandomFeeling()
+    setFeeling(word)
+    void runSearch(word)
+  }
+
   return (
     <div className="flex flex-1 flex-col px-6 pt-8 pb-10">
       <form onSubmit={handleSubmit} className="mx-auto w-full max-w-md">
@@ -95,6 +136,13 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
                 </button>
               ))}
             </div>
+            <button
+              onClick={handleSurpriseMe}
+              type="button"
+              className="mt-4 text-sm text-muted underline underline-offset-4"
+            >
+              not sure? surprise me
+            </button>
           </div>
         )}
 
