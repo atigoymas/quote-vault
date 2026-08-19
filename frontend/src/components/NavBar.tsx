@@ -1,3 +1,6 @@
+import { useRef } from 'react'
+import { setOwnerKey } from '../lib/ownerKey'
+
 export type Tab = 'mood' | 'capture' | 'tags'
 
 interface NavBarProps {
@@ -11,7 +14,31 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'tags', label: 'Tags' },
 ]
 
+// Tap "Tags" 5 times quickly to paste in the owner access key — no URL or
+// link ever carries the secret, avoiding it lingering in browser history.
+const UNLOCK_TAP_COUNT = 5
+const UNLOCK_TAP_WINDOW_MS = 2000
+
+function now(): number {
+  return Date.now()
+}
+
 export function NavBar({ active, onChange }: NavBarProps) {
+  const tapTimestamps = useRef<number[]>([])
+
+  function registerSecretTap() {
+    const timestamp = now()
+    const recent = [...tapTimestamps.current, timestamp].filter(
+      (t) => timestamp - t < UNLOCK_TAP_WINDOW_MS,
+    )
+    tapTimestamps.current = recent
+    if (recent.length < UNLOCK_TAP_COUNT) return
+
+    tapTimestamps.current = []
+    const key = window.prompt('Owner access key:')
+    if (key?.trim()) setOwnerKey(key.trim())
+  }
+
   return (
     <nav
       className="sticky top-0 z-10 flex justify-around border-b border-line bg-paper/95 backdrop-blur"
@@ -20,7 +47,10 @@ export function NavBar({ active, onChange }: NavBarProps) {
       {TABS.map((tab) => (
         <button
           key={tab.id}
-          onClick={() => onChange(tab.id)}
+          onClick={() => {
+            onChange(tab.id)
+            if (tab.id === 'tags') registerSecretTap()
+          }}
           type="button"
           className={`flex-1 py-4 text-sm tracking-wide transition-colors ${
             active === tab.id ? 'text-accent' : 'text-muted'
