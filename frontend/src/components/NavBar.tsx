@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { checkOwnerStatus } from '../lib/api'
 import { setOwnerKey } from '../lib/ownerKey'
 
 export type Tab = 'mood' | 'capture' | 'tags'
@@ -36,7 +37,14 @@ export function NavBar({ active, onChange }: NavBarProps) {
 
     tapTimestamps.current = []
     const key = window.prompt('Owner access key:')
-    if (key?.trim()) setOwnerKey(key.trim())
+    if (!key?.trim()) return
+
+    setOwnerKey(key.trim())
+    checkOwnerStatus()
+      .then(({ is_owner }) => {
+        window.alert(is_owner ? 'Owner key accepted.' : "That key didn't match — try again.")
+      })
+      .catch(() => window.alert('Could not verify the key — check your connection and retry.'))
   }
 
   return (

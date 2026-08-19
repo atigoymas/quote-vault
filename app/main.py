@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.rate_limit import is_owner
 from app.routers import quotes, search
 
 app = FastAPI(title="Quote Vault")
@@ -25,3 +26,8 @@ app.include_router(search.router)
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/owner/check")
+async def check_owner(request: Request) -> dict[str, bool]:
+    return {"is_owner": is_owner(request)}

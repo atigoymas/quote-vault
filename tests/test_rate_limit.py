@@ -48,3 +48,17 @@ async def test_unrelated_endpoints_are_not_rate_limited(client: AsyncClient) -> 
     for _ in range(rate_limit.PUBLIC_MAX_REQUESTS_PER_WINDOW + 5):
         response = await client.get("/tags", headers=STRANGER_HEADERS)
         assert response.status_code == 200
+
+
+async def test_owner_check_reports_true_for_correct_key(client: AsyncClient) -> None:
+    response = await client.get("/owner/check")
+
+    assert response.status_code == 200
+    assert response.json() == {"is_owner": True}
+
+
+async def test_owner_check_reports_false_for_wrong_key(client: AsyncClient) -> None:
+    response = await client.get("/owner/check", headers=STRANGER_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"is_owner": False}

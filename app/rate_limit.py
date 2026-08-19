@@ -28,7 +28,7 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _is_owner(request: Request) -> bool:
+def is_owner(request: Request) -> bool:
     owner_key = get_settings().owner_access_key
     if not owner_key:
         return False
@@ -37,7 +37,7 @@ def _is_owner(request: Request) -> bool:
 
 
 def enforce_rate_limit(request: Request) -> None:
-    if _is_owner(request):
+    if is_owner(request):
         return
 
     client_ip = _client_ip(request)

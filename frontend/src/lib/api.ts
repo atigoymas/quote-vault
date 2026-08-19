@@ -60,3 +60,7 @@ export function searchTopic(query: string, tag?: string): Promise<SearchResult[]
     body: JSON.stringify({ query, tag: tag ?? null }),
   })
 }
+
+export function checkOwnerStatus(): Promise<{ is_owner: boolean }> {
+  return request<{ is_owner: boolean }>('/owner/check')
+}
