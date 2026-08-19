@@ -1,12 +1,12 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class QuoteCreate(BaseModel):
-    text: str
-    source: str | None = None
-    author: str | None = None
+    text: str = Field(max_length=4000)
+    source: str | None = Field(default=None, max_length=200)
+    author: str | None = Field(default=None, max_length=200)
 
 
 class QuoteOut(BaseModel):
@@ -26,9 +26,9 @@ class TagCount(BaseModel):
 
 
 class TopicSearchRequest(BaseModel):
-    query: str
+    query: str = Field(max_length=500)
     tag: str | None = None
-    limit: int = 5
+    limit: int = Field(default=5, gt=0, le=50)
 
 
 class SearchResult(BaseModel):
@@ -41,7 +41,7 @@ class SearchResult(BaseModel):
 
 
 class MoodSearchRequest(BaseModel):
-    feeling: str
+    feeling: str = Field(max_length=500)
     tag: str | None = None
 
 

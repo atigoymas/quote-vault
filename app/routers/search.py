@@ -37,7 +37,11 @@ def _to_search_result(quote: Quote, similarity: float) -> SearchResult:
     )
 
 
-@router.post("/search/topic", response_model=list[SearchResult])
+@router.post(
+    "/search/topic",
+    response_model=list[SearchResult],
+    dependencies=[Depends(enforce_rate_limit)],
+)
 async def search_topic(payload: TopicSearchRequest, db: DbSession) -> list[SearchResult]:
     embedding = await asyncio.to_thread(embed_text, payload.query)
     result = await db.execute(_ranked_query(embedding, payload.tag, payload.limit))

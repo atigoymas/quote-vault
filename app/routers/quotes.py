@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import DbSession
 from app.embeddings import embed_text
 from app.models import Quote
-from app.rate_limit import enforce_rate_limit
+from app.rate_limit import require_owner
 from app.schemas import QuoteCreate, QuoteOut, TagCount
 from app.tagging import generate_tags
 
@@ -26,7 +26,7 @@ async def _distinct_tags(db: AsyncSession) -> list[str]:
     "/quotes",
     response_model=QuoteOut,
     status_code=201,
-    dependencies=[Depends(enforce_rate_limit)],
+    dependencies=[Depends(require_owner)],
 )
 async def create_quote(payload: QuoteCreate, db: DbSession) -> Quote:
     embedding = await asyncio.to_thread(embed_text, payload.text)
@@ -49,8 +49,8 @@ async def create_quote(payload: QuoteCreate, db: DbSession) -> Quote:
 async def list_quotes(
     db: DbSession,
     tag: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, gt=0, le=100),
+    offset: int = Query(default=0, ge=0),
 ) -> list[Quote]:
     stmt = select(Quote).order_by(Quote.created_at.desc()).limit(limit).offset(offset)
     if tag is not None:

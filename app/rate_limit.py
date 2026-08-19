@@ -22,9 +22,17 @@ _hits: dict[str, list[float]] = defaultdict(list)
 
 
 def _client_ip(request: Request) -> str:
+    # Cloudflare sits in front of Render and always overwrites this header at
+    # its own edge, so it's the one value here a client can't spoof. Fall
+    # back to the last X-Forwarded-For hop (appended by the nearest trusted
+    # proxy) rather than the first (attacker-controlled, since proxies
+    # append to the end of the list, not overwrite the front).
+    cf_connecting_ip = request.headers.get("cf-connecting-ip")
+    if cf_connecting_ip:
+        return cf_connecting_ip.strip()
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        return forwarded.split(",")[-1].strip()
     return request.client.host if request.client else "unknown"
 
 
@@ -34,6 +42,11 @@ def is_owner(request: Request) -> bool:
         return False
     provided = request.headers.get(OWNER_HEADER, "")
     return secrets.compare_digest(provided, owner_key)
+
+
+def require_owner(request: Request) -> None:
+    if not is_owner(request):
+        raise HTTPException(status_code=403, detail="Only the owner can do that.")
 
 
 def enforce_rate_limit(request: Request) -> None:
