@@ -29,7 +29,7 @@ export function TagBrowse() {
 
   if (selected) {
     return (
-      <div className="flex-1 px-6 pt-14 pb-10">
+      <div className="flex-1 px-6 pt-8 pb-10">
         <button
           onClick={() => setSelected(null)}
           type="button"
@@ -55,7 +55,7 @@ export function TagBrowse() {
   }
 
   return (
-    <div className="flex-1 px-6 pt-14 pb-10">
+    <div className="flex-1 px-6 pt-8 pb-10">
       <p className="text-center text-sm text-muted">tags</p>
       {loading ? (
         <p className="mt-8 text-center text-sm text-muted">loading…</p>

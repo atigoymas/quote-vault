@@ -109,7 +109,7 @@ export function QuickCapture({ initialDraft, onDraftConsumed }: QuickCaptureProp
   }
 
   return (
-    <div className="flex flex-1 flex-col px-6 pt-14 pb-10">
+    <div className="flex flex-1 flex-col px-6 pt-8 pb-10">
       <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <textarea
           value={text}

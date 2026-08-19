@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BottomNav, type Tab } from './components/BottomNav'
+import { NavBar, type Tab } from './components/NavBar'
 import { MoodSearch } from './screens/MoodSearch'
 import { QuickCapture, type SharedDraft } from './screens/QuickCapture'
 import { TagBrowse } from './screens/TagBrowse'
@@ -29,12 +29,12 @@ function App() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-paper">
+      <NavBar active={tab} onChange={setTab} />
       {tab === 'mood' && <MoodSearch onNavigateToCapture={() => setTab('capture')} />}
       {tab === 'capture' && (
         <QuickCapture initialDraft={sharedDraft} onDraftConsumed={() => setSharedDraft(null)} />
       )}
       {tab === 'tags' && <TagBrowse />}
-      <BottomNav active={tab} onChange={setTab} />
     </div>
   )
 }

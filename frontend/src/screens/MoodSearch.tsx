@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { QuoteDisplay } from '../components/QuoteDisplay'
 import { ApiError, searchMood } from '../lib/api'
 import { getRecentlyViewed, recordView, type ViewedQuote } from '../lib/recentlyViewed'
@@ -13,6 +13,7 @@ interface MoodSearchProps {
 }
 
 export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
   const [feeling, setFeeling] = useState('')
   const [result, setResult] = useState<MoodSearchResult | null>(null)
   const [offlineQuote, setOfflineQuote] = useState<ViewedQuote | null>(null)
@@ -22,6 +23,7 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
   async function runSearch(value: string) {
     const trimmed = value.trim()
     if (!trimmed) return
+    inputRef.current?.blur()
 
     if (!navigator.onLine) {
       const recent = getRecentlyViewed()
@@ -57,13 +59,14 @@ export function MoodSearch({ onNavigateToCapture }: MoodSearchProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col px-6 pt-14 pb-10">
+    <div className="flex flex-1 flex-col px-6 pt-8 pb-10">
       <form onSubmit={handleSubmit} className="mx-auto w-full max-w-md">
         <label htmlFor="feeling" className="block text-center text-sm text-muted">
           How are you feeling?
         </label>
         <input
           id="feeling"
+          ref={inputRef}
           value={feeling}
           onChange={(event) => setFeeling(event.target.value)}
           placeholder="restless, hopeful, undone…"

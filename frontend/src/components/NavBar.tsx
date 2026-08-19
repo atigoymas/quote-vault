@@ -1,6 +1,6 @@
 export type Tab = 'mood' | 'capture' | 'tags'
 
-interface BottomNavProps {
+interface NavBarProps {
   active: Tab
   onChange: (tab: Tab) => void
 }
@@ -11,11 +11,11 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'tags', label: 'Tags' },
 ]
 
-export function BottomNav({ active, onChange }: BottomNavProps) {
+export function NavBar({ active, onChange }: NavBarProps) {
   return (
     <nav
-      className="sticky bottom-0 flex justify-around border-t border-line bg-paper/95 backdrop-blur"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="sticky top-0 z-10 flex justify-around border-b border-line bg-paper/95 backdrop-blur"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       {TABS.map((tab) => (
         <button
