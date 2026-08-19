@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { ApiError, createQuote } from '../lib/api'
+import { splitAttribution } from '../lib/attribution'
 import { recordView } from '../lib/recentlyViewed'
 import type { Quote } from '../types'
 
@@ -30,15 +31,34 @@ export function QuickCapture({ initialDraft, onDraftConsumed }: QuickCaptureProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const pasted = event.clipboardData.getData('text')
+    if (!pasted) return
+    const split = splitAttribution(pasted)
+    if (!split.author) return
+    event.preventDefault()
+    setText(split.text)
+    setAuthor(split.author)
+    setShowDetails(true)
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const trimmed = text.trim()
-    if (!trimmed) return
+    let finalText = text.trim()
+    let finalAuthor = author.trim()
+    if (!finalAuthor) {
+      const split = splitAttribution(finalText)
+      if (split.author) {
+        finalText = split.text
+        finalAuthor = split.author
+      }
+    }
+    if (!finalText) return
     setStatus('saving')
     try {
       const quote = await createQuote({
-        text: trimmed,
-        author: author.trim() || undefined,
+        text: finalText,
+        author: finalAuthor || undefined,
         source: source.trim() || undefined,
       })
       recordView(quote)
@@ -94,6 +114,7 @@ export function QuickCapture({ initialDraft, onDraftConsumed }: QuickCaptureProp
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
+          onPaste={handlePaste}
           placeholder="Paste or type a quote…"
           autoFocus
           rows={6}
