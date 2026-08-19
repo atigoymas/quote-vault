@@ -127,3 +127,14 @@ async def generate_explanation(feeling: str, quote_text: str) -> str | None:
     return await asyncio.to_thread(
         _generate_explanation_sync, feeling, quote_text, settings.gemini_api_key
     )
+
+
+def fallback_explanation(feeling: str, tags: list[str] | None) -> str | None:
+    """A free, non-LLM explanation for when generate_explanation fails or is
+    skipped (quota exhausted, no API key) — built from tags already stored
+    on the quote, so it costs no API call.
+    """
+    if not tags:
+        return None
+    highlighted = " and ".join(tags[:2])
+    return f"This one touches on {highlighted} — themes that often sit close to feeling {feeling}."

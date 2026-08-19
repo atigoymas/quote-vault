@@ -4,6 +4,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
+from app import rate_limit
 from app.database import engine
 from app.main import app
 
@@ -13,6 +14,11 @@ async def _clean_quotes_table() -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.execute(text("TRUNCATE TABLE quotes RESTART IDENTITY CASCADE"))
     yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits() -> None:
+    rate_limit.reset()
 
 
 @pytest.fixture

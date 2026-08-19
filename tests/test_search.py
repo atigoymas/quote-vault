@@ -81,6 +81,23 @@ async def test_search_mood_explanation_failure_does_not_block_result(
     assert body["explanation"] is None
 
 
+async def test_search_mood_falls_back_to_tag_based_explanation_when_llm_fails(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def _fake_generate_tags(text: str, existing_tags: list[str] | None = None) -> list[str]:
+        return ["introspection", "purpose"]
+
+    monkeypatch.setattr("app.routers.quotes.generate_tags", _fake_generate_tags)
+    await client.post("/quotes", json={"text": MORTALITY_A})
+
+    response = await client.post("/search/mood", json={"feeling": "questioning how I'm living"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["explanation"] is not None
+    assert "introspection" in body["explanation"]
+
+
 async def test_search_mood_filters_by_tag(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

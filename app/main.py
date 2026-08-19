@@ -5,10 +5,15 @@ from app.routers import quotes, search
 
 app = FastAPI(title="Quote Vault")
 
-# Single-user app, no cookies/auth on requests — open CORS is fine here.
+# Source and this Render service name are public — CORS is scoped to the
+# real frontend (not "*") so the Gemini-calling routes aren't trivially
+# embeddable elsewhere; enforce_rate_limit backstops direct API abuse.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://quote-vault-rose.vercel.app",
+        "http://localhost:5173",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )

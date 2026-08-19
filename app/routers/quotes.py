@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import DbSession
 from app.embeddings import embed_text
 from app.models import Quote
+from app.rate_limit import enforce_rate_limit
 from app.schemas import QuoteCreate, QuoteOut, TagCount
 from app.tagging import generate_tags
 
@@ -21,7 +22,12 @@ async def _distinct_tags(db: AsyncSession) -> list[str]:
     return [row.tag for row in result]
 
 
-@router.post("/quotes", response_model=QuoteOut, status_code=201)
+@router.post(
+    "/quotes",
+    response_model=QuoteOut,
+    status_code=201,
+    dependencies=[Depends(enforce_rate_limit)],
+)
 async def create_quote(payload: QuoteCreate, db: DbSession) -> Quote:
     embedding = await asyncio.to_thread(embed_text, payload.text)
     existing_tags = await _distinct_tags(db)

@@ -1,18 +1,19 @@
 import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import Select, select
 
 from app.database import DbSession
 from app.embeddings import embed_text
 from app.models import Quote
+from app.rate_limit import enforce_rate_limit
 from app.schemas import (
     MoodSearchRequest,
     MoodSearchResult,
     SearchResult,
     TopicSearchRequest,
 )
-from app.tagging import generate_explanation
+from app.tagging import fallback_explanation, generate_explanation
 
 router = APIRouter(tags=["search"])
 
@@ -43,7 +44,11 @@ async def search_topic(payload: TopicSearchRequest, db: DbSession) -> list[Searc
     return [_to_search_result(quote, similarity) for quote, similarity in result.all()]
 
 
-@router.post("/search/mood", response_model=MoodSearchResult)
+@router.post(
+    "/search/mood",
+    response_model=MoodSearchResult,
+    dependencies=[Depends(enforce_rate_limit)],
+)
 async def search_mood(payload: MoodSearchRequest, db: DbSession) -> MoodSearchResult:
     embedding = await asyncio.to_thread(embed_text, payload.feeling)
     result = await db.execute(_ranked_query(embedding, payload.tag, limit=1))
@@ -53,5 +58,7 @@ async def search_mood(payload: MoodSearchRequest, db: DbSession) -> MoodSearchRe
 
     quote, similarity = row
     explanation = await generate_explanation(payload.feeling, quote.text)
+    if explanation is None:
+        explanation = fallback_explanation(payload.feeling, quote.tags)
     result = _to_search_result(quote, similarity)
     return MoodSearchResult(**result.model_dump(), explanation=explanation)
