@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://quotevault:quotevault@localhost:5432/quotevault"
     gemini_api_key: str | None = None
+    owner_access_key: str | None = None
 
 
 @lru_cache

@@ -1,29 +1,50 @@
 from httpx import AsyncClient
 
-from app.rate_limit import MAX_REQUESTS_PER_WINDOW
+from app import rate_limit
+
+STRANGER_HEADERS = {"X-Owner-Key": "wrong-key"}
 
 
-async def test_quotes_endpoint_returns_429_after_threshold(client: AsyncClient) -> None:
-    for _ in range(MAX_REQUESTS_PER_WINDOW):
-        response = await client.post("/quotes", json={"text": "filler quote"})
+async def test_quotes_endpoint_returns_429_after_threshold_for_non_owner(
+    client: AsyncClient,
+) -> None:
+    for _ in range(rate_limit.PUBLIC_MAX_REQUESTS_PER_WINDOW):
+        response = await client.post(
+            "/quotes", json={"text": "filler quote"}, headers=STRANGER_HEADERS
+        )
         assert response.status_code == 201
 
-    response = await client.post("/quotes", json={"text": "one too many"})
+    response = await client.post(
+        "/quotes", json={"text": "one too many"}, headers=STRANGER_HEADERS
+    )
 
     assert response.status_code == 429
 
 
-async def test_rate_limit_is_shared_across_gemini_routes(client: AsyncClient) -> None:
-    for _ in range(MAX_REQUESTS_PER_WINDOW):
+async def test_owner_key_bypasses_rate_limit(client: AsyncClient) -> None:
+    # the shared `client` fixture already sends the correct owner key
+    for _ in range(rate_limit.PUBLIC_MAX_REQUESTS_PER_WINDOW + 5):
         response = await client.post("/quotes", json={"text": "filler quote"})
         assert response.status_code == 201
 
-    response = await client.post("/search/mood", json={"feeling": "anything"})
+
+async def test_rate_limit_is_shared_across_gemini_routes_for_non_owner(
+    client: AsyncClient,
+) -> None:
+    for _ in range(rate_limit.PUBLIC_MAX_REQUESTS_PER_WINDOW):
+        response = await client.post(
+            "/quotes", json={"text": "filler quote"}, headers=STRANGER_HEADERS
+        )
+        assert response.status_code == 201
+
+    response = await client.post(
+        "/search/mood", json={"feeling": "anything"}, headers=STRANGER_HEADERS
+    )
 
     assert response.status_code == 429
 
 
 async def test_unrelated_endpoints_are_not_rate_limited(client: AsyncClient) -> None:
-    for _ in range(MAX_REQUESTS_PER_WINDOW + 5):
-        response = await client.get("/tags")
+    for _ in range(rate_limit.PUBLIC_MAX_REQUESTS_PER_WINDOW + 5):
+        response = await client.get("/tags", headers=STRANGER_HEADERS)
         assert response.status_code == 200

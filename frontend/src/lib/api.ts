@@ -1,3 +1,4 @@
+import { getOwnerKey } from './ownerKey'
 import type { MoodSearchResult, Quote, SearchResult, TagCount } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -12,8 +13,12 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const ownerKey = getOwnerKey()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (ownerKey) headers['X-Owner-Key'] = ownerKey
+
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
   })
 

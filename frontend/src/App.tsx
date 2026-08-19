@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavBar, type Tab } from './components/NavBar'
+import { captureOwnerKeyFromUrl } from './lib/ownerKey'
 import { MoodSearch } from './screens/MoodSearch'
 import { QuickCapture, type SharedDraft } from './screens/QuickCapture'
 import { TagBrowse } from './screens/TagBrowse'
@@ -19,6 +20,7 @@ function App() {
   const [sharedDraft, setSharedDraft] = useState<SharedDraft | null>(null)
 
   useEffect(() => {
+    captureOwnerKeyFromUrl()
     const draft = readSharedDraft()
     if (draft) {
       setSharedDraft(draft)
