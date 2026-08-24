@@ -20,6 +20,20 @@ Most quote apps are a static, scrollable list sorted by whenever you saved each 
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    Browser["Browser / installed PWA"]
+    Vercel["Vercel — React frontend"]
+    Render["Render — FastAPI backend"]
+    Neon[("Neon Postgres + pgvector")]
+    Gemini["Google Gemini — tagging & explanations"]
+
+    Browser -->|loads app| Vercel
+    Browser -->|API calls| Render
+    Render -->|vector search, reads/writes| Neon
+    Render -->|tag on save, explain on mood match| Gemini
+```
+
 ```
 frontend/            React + TypeScript + Vite + Tailwind, deployed to Vercel
 app/                  FastAPI backend, deployed to Render
@@ -68,4 +82,4 @@ This deployment is public and rate-limited: anyone can try mood and topic search
 
 ## License
 
-Personal project, shared for portfolio purposes.
+MIT — see [LICENSE](LICENSE).
