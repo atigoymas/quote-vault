@@ -1,32 +1,41 @@
 # Quote Vault
 
-A personal PWA for saving quotes from philosophical essays and articles, searchable by mood as well as by topic. Type how you're feeling, get back the quote in your collection that actually resonates — with a one-line explanation of why.
+A personal app for saving quotes and finding them again by how you're feeling, instead of scrolling through a list.
 
-**Live app:** https://quote-vault-rose.vercel.app
-**Stack:** FastAPI (Python) · React/TypeScript (Vite) · PostgreSQL + pgvector · Google Gemini
+Live demo: https://quote-vault-rose.vercel.app
 
-## Why
+## How to use it
 
-Most quote apps are a static, scrollable list sorted by whenever you saved each one. This one leans on semantic search instead — the input is a feeling ("overwhelmed," "hopeful," "restless"), not a keyword, and the app finds the saved quote that actually fits. Saving one is meant to take no more than a paste and a tap; tagging happens automatically.
+It's a personal tool, not a pre-loaded library. It starts empty, and you fill it in with your own quotes.
 
-## Features
+1. Go to **Save**, paste or type a quote, tap Save. It gets tagged automatically in the background (takes a second or two).
+2. Go to **Mood**, type how you're actually feeling ("restless," "burnt out," whatever), and hit enter. It finds the quote you saved that fits, and adds a line on why.
+3. **Tags** shows everything you've saved so far, grouped by theme instead of one long list.
 
-- **Mood search** — describe a feeling, get back your closest-matching saved quote plus a one-sentence explanation of why it fits
-- **Quick capture** — paste a quote, save it in one tap; author auto-detected from a trailing `— Author` if present
-- **Auto-tagging** — Gemini tags each quote on save, reusing existing tags instead of coining synonyms so the tag vocabulary stays tight over time
-- **Tag browse** — quotes grouped by mood/theme category, not a flat list
-- **Installable PWA** — offline reading of previously-viewed quotes, Android Share Target integration (share text from any app straight into Quick Capture), read-aloud via the Web Speech API
-- **Graceful degradation** — if the LLM is rate-limited or unavailable, quotes still save (just untagged) and mood search still returns a match (with a template-based fallback explanation built from the quote's existing tags)
+It's running on a free-tier Gemini key, so the public demo is rate-limited: expect a "slow down" message if you poke around a lot without being the owner. That's intentional, not a bug.
 
-## Architecture
+## Why this exists
+
+I wanted somewhere to keep quotes from stuff I read and actually find them again later, not by remembering which article they came from, but by what they mean. So instead of a keyword search box, the whole app is built around "how am I feeling right now, and is there a quote for that."
+
+## How it works
+
+- **Mood search**: type a feeling, get the closest match from what you've saved, plus a one-sentence explanation of why it fits
+- **Auto-tagging**: Gemini reads each quote on save and tags it, reusing tags you already have instead of inventing near-duplicates, so the tag list stays small
+- **Tag browse**: quotes grouped by mood/theme instead of a flat grid
+- **Paste and go**: paste a quote with the author tacked on after a dash, and it splits that into its own field automatically
+- **Installable / offline**: it's a PWA, works offline for anything you've already viewed, and on Android you can share text from any app straight into it
+- If Gemini's rate-limited or down for a second, saving and searching both still work; tags/explanations just fall back to something simpler instead of failing outright
+
+## Under the hood
 
 ```mermaid
 flowchart LR
     Browser["Browser / installed PWA"]
-    Vercel["Vercel — React frontend"]
-    Render["Render — FastAPI backend"]
+    Vercel["Vercel: React frontend"]
+    Render["Render: FastAPI backend"]
     Neon[("Neon Postgres + pgvector")]
-    Gemini["Google Gemini — tagging & explanations"]
+    Gemini["Google Gemini: tagging & explanations"]
 
     Browser -->|loads app| Vercel
     Browser -->|API calls| Render
@@ -34,21 +43,9 @@ flowchart LR
     Render -->|tag on save, explain on mood match| Gemini
 ```
 
-```
-frontend/            React + TypeScript + Vite + Tailwind, deployed to Vercel
-app/                  FastAPI backend, deployed to Render
-  routers/            quotes.py (CRUD + tags), search.py (topic/mood search)
-  embeddings.py       Local embedding model (fastembed / ONNX Runtime — not
-                      PyTorch, which OOMs on memory-constrained hosts)
-  tagging.py          Gemini calls: auto-tagging, mood explanations, fallbacks
-  rate_limit.py       Owner-only write access + spoofing-resistant public rate limit
-db/init.sql           Postgres schema (pgvector, no ANN index — brute-force
-                      cosine is fast enough at personal scale)
-```
+FastAPI + Postgres/pgvector backend on Render, React/Vite frontend on Vercel, Neon for the database. Search is one SQL query: cosine similarity over embeddings plus the tag filter, ranked together, no separate steps. Embeddings run locally with `fastembed` (ONNX, not PyTorch; torch OOMs on Render's free 512MB tier, learned that one the hard way). Gemini only gets called on save and on a mood match, never during search itself, so search speed never depends on the LLM being fast or even up.
 
-Search ranks quotes with pgvector cosine similarity in a single SQL statement, with tag filtering folded into the same query. The LLM never sits in the search path — Gemini is only called on save (to tag) and after a mood match is found (to explain), so search itself stays fast and never blocks on the LLM.
-
-## Running locally
+## Running it locally
 
 **Backend**
 ```bash
@@ -68,18 +65,14 @@ npm run dev
 
 **Tests**
 ```bash
-pytest          # 37 tests: search ranking, embedding pipeline, tagging, rate limiting
+pytest          # search ranking, embedding pipeline, tagging, rate limiting
 ruff check .
 ```
 
-## Deployment
+## About the public deployment
 
-- **Frontend** → Vercel (static build, auto-deploys on push)
-- **Backend** → Render (Python web service, auto-deploys on push)
-- **Database** → Neon Postgres (pgvector extension), pooled connection for cold-start safety
-
-This deployment is public and rate-limited: anyone can try mood and topic search, but saving new quotes is restricted to the app owner via a constant-time-compared access key, and public traffic is capped at a few requests/day per IP to protect the LLM API quota from abuse. See `app/rate_limit.py`.
+Anyone can try mood/topic search on the live demo, but saving new quotes is locked to me (the owner) via a constant-time-compared access key, otherwise a stranger could fill my own quote collection with junk. Everyone else gets a small daily allowance per IP so the shared Gemini key doesn't get burned through by bots. Details in `app/rate_limit.py` if you're curious how that's wired up.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
